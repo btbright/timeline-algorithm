@@ -14,6 +14,31 @@ function addItemToRow(item, row){
   return true
 }
 
+export function makeTimelineRowsImproved(timelineItems){
+  const rows = []
+  for (var i = 0; i < timelineItems.length; i++) {
+    const timelineItem = timelineItems[i]
+    let hasAddedItem = false
+    for (var j = 0; j < rows.length; j++) {
+      const row = rows[j]
+      if (row.length !== 0){
+        const previousItem = row.slice().reverse().find(item => getValue(item.startTime) <= getValue(timelineItem.startTime))
+        if (previousItem && getValue(previousItem.endTime) >= getValue(timelineItem.startTime)) continue
+        const nextItem = row.find(item => getValue(item.startTime) >= getValue(timelineItem.startTime))
+        if (nextItem && timelineItem.endTime && getValue(nextItem.startTime) <= getValue(timelineItem.endTime)) continue
+      }
+      hasAddedItem = true
+      row.push(timelineItem)
+      row.sort((a,b) => getValue(a.startTime) - getValue(b.startTime))
+      break
+    }
+    if (!hasAddedItem){
+      rows.push([timelineItem])
+    }
+  }
+  return rows
+}
+
 export function makeTimelineRows(timelineItems){
   const rows = []
   timelineItems.forEach(item => {
@@ -43,6 +68,7 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
     const item = timelineItems[i]
 
     const optimizedItem = {
+      id: i,
       startTime: new Var(),
       endTime: new Var(),
       hue: item.hue,

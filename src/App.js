@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import './App.css';
-import { makeTimelineRows, makeOptimizedTimelineItems } from './timeline'
+import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved } from './timeline'
 
 const timelineDuration = 10000
 const componentDurationMultiplier = 300
@@ -73,7 +73,7 @@ class App extends Component {
       optimizedTimelineItems = []
       console.error('NOPE')
     }
-    const optimizedTimelineRows = makeTimelineRows(optimizedTimelineItems)
+    const optimizedTimelineRows = makeTimelineRowsImproved(optimizedTimelineItems)
     this.setState({
       timelineInRows,
       optimizedTimelineRows
@@ -100,7 +100,7 @@ class App extends Component {
           {this.state.optimizedTimelineRows.map((rowItems, i) => {
             return <div key={i} style={{position:'relative', height: 10, top: 2}}>
                     {rowItems.map((item, i) => {
-                      return <div key={`opt-${i}`} className="timelineItem" style={{background: `hsla(${item.hue}, 100%, 50%, .${100-item.priority})`, left: `${(getValue(item.startTime) / timelineDuration)*100}%`, width: `${((getValue(item.endTime)-getValue(item.startTime)) / timelineDuration)*100}%`}}></div>
+                      return <div key={`opt-${i}`} className="timelineItem" style={{fontSize: 9, background: `hsla(${item.hue}, 100%, 50%, .${100-item.priority})`, left: `${(getValue(item.startTime) / timelineDuration)*100}%`, width: `${((getValue(item.endTime)-getValue(item.startTime)) / timelineDuration)*100}%`}}></div>
                     })}
                    </div>
           })}
