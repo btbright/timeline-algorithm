@@ -2,9 +2,10 @@ import React, { Component } from 'react';
 import './App.css';
 import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved } from './timeline'
 
-const timelineDuration = 10000
+const timelineDuration = 80000
 const componentDurationMultiplier = 300
 const componentCount = 50
+const benchmarkLoadFactor = 5
 
 const timelineConfig = {
   timelineDuration,
@@ -21,7 +22,7 @@ function generateTestTimelineData(){
   for (var i = 0; i < componentCount; i++) {
     const duration = Math.floor(Math.random() * 10 * componentDurationMultiplier) + 1000
     timelineData.push({
-      startTime: Math.floor(Math.random() * 8000),
+      startTime: Math.floor(Math.random() * timelineDuration),
       duration,
       hue: makeRandomHue(),
       priority: Math.floor(Math.random() * 100)
@@ -33,8 +34,6 @@ function generateTestTimelineData(){
 function getValue(val){
   return typeof val === 'object' ? val.value() : val
 }
-
-const benchmarkLoadFactor = 5
 
 class App extends Component {
   constructor(props){
