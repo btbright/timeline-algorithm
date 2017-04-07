@@ -2,9 +2,9 @@ import React, { Component } from 'react';
 import './App.css';
 import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved } from './timeline'
 
-const timelineDuration = 80000
+const timelineDuration = 10000
 const componentDurationMultiplier = 300
-const componentCount = 50
+const componentCount = 10
 const benchmarkLoadFactor = 5
 
 const timelineConfig = {
@@ -89,7 +89,7 @@ class App extends Component {
           {this.state.timelineInRows.map((rowItems, i) => {
             return <div key={i} style={{position:'relative', height: 10, top: 2}}>
                     {rowItems.map((item, i) => {
-                      return <div key={`naive-${i}`} className="timelineItem" style={{background: `hsla(${item.hue}, 100%, 50%, .${item.priority})`, left: `${(getValue(item.startTime) / timelineDuration)*100}%`, width: `${(getValue(item.duration) / timelineDuration)*100}%`}}></div>
+                      return <div key={`naive-${i}`} className="timelineItem" style={{background: `hsla(${item.hue}, 100%, 50%, .${100-item.priority})`, left: `${(getValue(item.startTime) / timelineDuration)*100}%`, width: `${(getValue(item.duration) / timelineDuration)*100}%`}}></div>
                     })}
                    </div>
           })}
