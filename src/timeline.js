@@ -58,12 +58,12 @@ export function makeTimelineRows(timelineItems){
   return rows
 }
 
-function getMaxEndForTolerance(timelineTolerance, {rawStartTime, rawDuration}){
+export function getMaxEndForTolerance(timelineTolerance, {rawStartTime, rawDuration}){
   return rawStartTime + rawDuration + timelineTolerance
 }
 
-function getMinStartForTolerance(timelineTolerance, {rawStartTime}){
-  return rawStartTime - timelineTolerance
+export function getMinStartForTolerance(timelineTolerance, {rawStartTime}){
+  return Math.max(0, rawStartTime - timelineTolerance)
 }
 
 function findCloseItems(timelineOptions, optimizedItem){
@@ -73,12 +73,12 @@ function findCloseItems(timelineOptions, optimizedItem){
   }
 }
 
-function isPotentialConflictBefore({getMaxEnd, getMinStart, timelineTolerance}, constraintItem, optimizedItem){
+export function isPotentialConflictBefore({getMaxEnd, getMinStart}, constraintItem, optimizedItem){
   return constraintItem.rawStartTime <= optimizedItem.rawStartTime && getMaxEnd(constraintItem) >= getMinStart(optimizedItem)
 }
 
-function isPotentialConflictAfter({getMaxEnd, getMinStart, timelineTolerance}, constraintItem, optimizedItem){
-  return getMaxEnd(constraintItem) >= optimizedItem.rawStartTime+optimizedItem.rawDuration && getMinStart(constraintItem) <= getMaxEnd(constraintItem)
+export function isPotentialConflictAfter({getMaxEnd, getMinStart}, constraintItem, optimizedItem){
+  return getMaxEnd(constraintItem) >= optimizedItem.rawStartTime+optimizedItem.rawDuration && getMinStart(constraintItem) <= getMaxEnd(optimizedItem)
 }
 
 export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance, durationTolerance, isDebug}, timelineItems){
@@ -105,6 +105,7 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
 
     //set duration
     solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.minus(optimizedItem.startTime), kiwi.Operator.Ge, item.duration-durationTolerance, kiwi.Strength.required));
+    
     //set tolerance
     solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Le, item.startTime+timelineTolerance, kiwi.Strength.required));
     solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, item.startTime-timelineTolerance, kiwi.Strength.required));
@@ -123,6 +124,7 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
   solver.updateVariables();
 
   const constraintMap = {}
+  const constraintDebugMap = {}
   let constraintCount = 0
 
   //setup limit functions with tolerances
@@ -139,22 +141,37 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
     const constraintItems = optimizedItems.filter(findCloseItems(timelineConfig, optimizedItem))
 
     for (var k = 0; k < constraintItems.length; k++) {
-      //don't need to add a constraint if is self or the reverse constraint has already been added
-      if (k === j || constraintMap[`${k}:${j}`]) continue
-      constraintMap[`${j}:${k}`] = true
-
       const constraintItem = constraintItems[k]
+      //don't need to add a constraint if is self or the reverse constraint has already been added
+      if (k === j || constraintMap[`${constraintItem.id}:${optimizedItem.id}`]) continue
+      constraintMap[`${optimizedItem.id}:${constraintItem.id}`] = true
+
+      let hasAddedConstraint = false
+
+      if (!constraintDebugMap[`constraints-${optimizedItem.id}`]){
+        constraintDebugMap[`constraints-${optimizedItem.id}`] = []
+      }
+      if (!constraintDebugMap[`constraints-${constraintItem.id}`]){
+        constraintDebugMap[`constraints-${constraintItem.id}`] = []
+      }
 
       //prevent conflicts with earlier component endings
       if (isPotentialConflictBefore(timelineConfig, constraintItem, optimizedItem)){
+        hasAddedConstraint = true
         constraintCount++
-        solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, constraintItem.endTime.plus(1), optimizedItem.cassowaryPriority));
+        solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, constraintItem.endTime.plus(1), kiwi.Strength.strong + optimizedItem.cassowaryPriority));
       }
 
       //prevent conflicts with later component starts
       if (isPotentialConflictAfter(timelineConfig, constraintItem, optimizedItem)){
+        hasAddedConstraint = true
         constraintCount++
-        solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.plus(1), kiwi.Operator.Le, constraintItem.startTime, optimizedItem.cassowaryPriority));
+        solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.plus(1), kiwi.Operator.Le, constraintItem.startTime, kiwi.Strength.strong + optimizedItem.cassowaryPriority));
+      }
+
+      if (hasAddedConstraint){
+        constraintDebugMap[`constraints-${optimizedItem.id}`].push(constraintItem.id)
+        constraintDebugMap[`constraints-${constraintItem.id}`].push(optimizedItem.id)
       }
 
       solver.updateVariables()
@@ -169,5 +186,5 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
   isDebug && console.time('resolve')
   solver.updateVariables();
   isDebug && console.timeEnd('resolve')
-  return optimizedItems
+  return {optimizedItems, constraintDebugMap}
 }

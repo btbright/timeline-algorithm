@@ -5,7 +5,7 @@ import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved 
 const timelineDuration = 1000 * 60 * 2.5
 const componentDurationMultiplier = 300
 const componentCount = 100
-const benchmarkLoadFactor = 5
+const benchmarkLoadFactor = 20
 
 const timelineConfig = {
   timelineDuration,
@@ -55,10 +55,10 @@ class App extends Component {
       console.log(`running ${i+1}...`)
       const testData = generateTestTimelineData()
       const perfStart = performance.now()
-      const optimizedTimelineItems = makeOptimizedTimelineItems(timelineConfig, testData)
+      const {optimizedItems} = makeOptimizedTimelineItems(timelineConfig, testData)
       const perfEnd = performance.now()
       optimizationTimes.push(perfEnd-perfStart)
-      rowCounts.push(makeTimelineRowsImproved(optimizedTimelineItems).length)
+      rowCounts.push(makeTimelineRowsImproved(optimizedItems).length)
       naiveRowCounts.push(makeTimelineRows(testData).length)
     }
     const benchmarkStats = {
@@ -72,18 +72,27 @@ class App extends Component {
   generateDebugTimelines(){
     const timelineItems = generateTestTimelineData()
     const timelineInRows = makeTimelineRows(timelineItems)
-    let optimizedTimelineItems
+    let optimizedTimelineItems, optimizedConstraintDebugMap
     try {
-      optimizedTimelineItems = makeOptimizedTimelineItems(Object.assign({isDebug: true}, timelineConfig), timelineItems)
+      const {optimizedItems, constraintDebugMap} = makeOptimizedTimelineItems(Object.assign({isDebug: true}, timelineConfig), timelineItems)
+      optimizedTimelineItems = optimizedItems
+      optimizedConstraintDebugMap = constraintDebugMap
     } catch(err){
       optimizedTimelineItems = []
-      console.error('NOPE')
+      console.error('NOPE', err)
     }
     const optimizedTimelineRows = makeTimelineRowsImproved(optimizedTimelineItems)
     this.setState({
       timelineInRows,
-      optimizedTimelineRows
+      optimizedTimelineRows,
+      optimizedConstraintDebugMap
     })
+  }
+  handleMouseOver(id){
+    this.setState({hoveredId: id})
+  }
+  handleMouseOut(){
+    this.setState({hoveredId: undefined})
   }
   render() {
     return (
@@ -106,7 +115,19 @@ class App extends Component {
           {this.state.optimizedTimelineRows.map((rowItems, i) => {
             return <div key={i} style={{position:'relative', height: 10, top: 2}}>
                     {rowItems.map((item, i) => {
-                      return <div key={`opt-${i}`} className="timelineItem" style={{fontSize: 9, background: `hsla(${item.hue}, 100%, 50%, .${100-item.priority})`, left: `${(getValue(item.startTime) / timelineDuration)*100}%`, width: `${((getValue(item.endTime)-getValue(item.startTime)) / timelineDuration)*100}%`}}></div>
+                      const naturalColor = `hsla(${item.hue}, 100%, 50%, .${100-item.priority})`
+                      return <div
+                              key={`opt-${i}`}
+                              onMouseOver={this.handleMouseOver.bind(this, item.id)}
+                              onMouseOut={this.handleMouseOut.bind(this)}
+                              className="timelineItem"
+                              style={{
+                                fontSize: 9,
+                                transition: 'background .2s',
+                                background: !this.state.hoveredId ? naturalColor : ((this.state.optimizedConstraintDebugMap[`constraints-${this.state.hoveredId}`]||[]).indexOf(item.id) !== -1 || this.state.hoveredId === item.id ? naturalColor : '#eee'),
+                                left: `${(getValue(item.startTime) / timelineDuration)*100}%`,
+                                width: `${((getValue(item.endTime)-getValue(item.startTime)) / timelineDuration)*100}%`
+                              }}></div>
                     })}
                    </div>
           })}

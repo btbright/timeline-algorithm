@@ -1,7 +1,6 @@
 
 .wrapper {
-  margin: 0px auto;
-  max-width: 800px;
+  margin: 0px 20px;
   min-height: 400px;
   display: flex;
   padding: 20px;
