@@ -2,9 +2,9 @@ import React, { Component } from 'react';
 import './App.css';
 import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved } from './timeline'
 
-const timelineDuration = 10000
+const timelineDuration = 1000 * 60 * 2.5
 const componentDurationMultiplier = 300
-const componentCount = 10
+const componentCount = 100
 const benchmarkLoadFactor = 5
 
 const timelineConfig = {
@@ -22,7 +22,7 @@ function generateTestTimelineData(){
   for (var i = 0; i < componentCount; i++) {
     const duration = Math.floor(Math.random() * 10 * componentDurationMultiplier) + 1000
     timelineData.push({
-      startTime: Math.floor(Math.random() * timelineDuration),
+      startTime: Math.floor(Math.random() * Math.round(timelineDuration-(timelineDuration*0.1))),
       duration,
       hue: makeRandomHue(),
       priority: Math.floor(Math.random() * 100)
@@ -39,7 +39,7 @@ class App extends Component {
   constructor(props){
     super(props)
     this.state = {
-      perfAverage: undefined,
+      benchmarkStats: undefined,
       timelineInRows: [],
       optimizedTimelineRows: []
     }
@@ -49,17 +49,24 @@ class App extends Component {
   }
   runBenchmark(){
     const optimizationTimes = []
+    const rowCounts = []
+    const naiveRowCounts = []
     for (var i = 0; i < benchmarkLoadFactor; i++) {
       console.log(`running ${i+1}...`)
       const testData = generateTestTimelineData()
       const perfStart = performance.now()
-      makeOptimizedTimelineItems(timelineConfig, testData)
+      const optimizedTimelineItems = makeOptimizedTimelineItems(timelineConfig, testData)
       const perfEnd = performance.now()
       optimizationTimes.push(perfEnd-perfStart)
+      rowCounts.push(makeTimelineRowsImproved(optimizedTimelineItems).length)
+      naiveRowCounts.push(makeTimelineRows(testData).length)
     }
-    this.setState({
-      perfAverage: parseInt(optimizationTimes.reduce((a,b) => a+b,0) / optimizationTimes.length, 10)
-    })
+    const benchmarkStats = {
+      perfAverage: parseInt(optimizationTimes.reduce((a,b) => a+b,0) / optimizationTimes.length, 10),
+      rowsAverage: rowCounts.reduce((a,b) => a+b,0) / rowCounts.length,
+      naiveRowsAverage: naiveRowCounts.reduce((a,b) => a+b,0) / naiveRowCounts.length,
+    }
+    this.setState({benchmarkStats})
     console.log(`done`)
   }
   generateDebugTimelines(){
@@ -83,7 +90,7 @@ class App extends Component {
       <div className="wrapper">
         <input type="button" value="regen debug" onClick={this.generateDebugTimelines.bind(this)} />
         <input type="button" value="run benchmark" onClick={this.runBenchmark.bind(this)} />
-        {this.state.perfAverage && <p>avg: {this.state.perfAverage}</p>}
+        {this.state.benchmarkStats && <p>perf avg: {this.state.benchmarkStats.perfAverage}, row count avg: {this.state.benchmarkStats.rowsAverage} (naive avg: {this.state.benchmarkStats.naiveRowsAverage})</p>}
         <h1>naive</h1>
         <div className="timeline">
           {this.state.timelineInRows.map((rowItems, i) => {

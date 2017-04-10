@@ -1,5 +1,4 @@
 import kiwi from 'kiwi.js'
-import { curry } from 'lodash'
 
 function getValue(val){
   return typeof val === 'object' ? val.value() : val
@@ -67,8 +66,24 @@ function getMinStartForTolerance(timelineTolerance, {rawStartTime}){
   return rawStartTime - timelineTolerance
 }
 
+function findCloseItems(timelineOptions, optimizedItem){
+  return constraintItem => {
+    return isPotentialConflictBefore(timelineOptions, constraintItem, optimizedItem) ||
+           isPotentialConflictAfter(timelineOptions, constraintItem, optimizedItem)
+  }
+}
+
+function isPotentialConflictBefore({getMaxEnd, getMinStart, timelineTolerance}, constraintItem, optimizedItem){
+  return constraintItem.rawStartTime <= optimizedItem.rawStartTime && getMaxEnd(constraintItem) >= getMinStart(optimizedItem)
+}
+
+function isPotentialConflictAfter({getMaxEnd, getMinStart, timelineTolerance}, constraintItem, optimizedItem){
+  return getMaxEnd(constraintItem) >= optimizedItem.rawStartTime+optimizedItem.rawDuration && getMinStart(constraintItem) <= getMaxEnd(constraintItem)
+}
+
 export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance, durationTolerance, isDebug}, timelineItems){
   var solver = new kiwi.Solver();
+
   const optimizedItems = []
 
   const Var = kiwi.Variable
@@ -111,31 +126,33 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
   let constraintCount = 0
 
   //setup limit functions with tolerances
-  const getMaxEnd = curry(getMaxEndForTolerance)(timelineTolerance)
-  const getMinStart = curry(getMinStartForTolerance)(timelineTolerance)
+  const getMaxEnd = getMaxEndForTolerance.bind(undefined, timelineTolerance)
+  const getMinStart = getMinStartForTolerance.bind(undefined, timelineTolerance)
+
+  const timelineConfig = {getMaxEnd, getMinStart, timelineTolerance}
 
   isDebug && console.time('adding constraints')
   //after creating optimized items, set interitem constraints
   for (var j = 0; j < optimizedItems.length; j++) {
     const optimizedItem = optimizedItems[j]
 
-    const constraintItems = optimizedItems.filter(constraintItem => (constraintItem.rawStartTime <= optimizedItem.rawStartTime && getMaxEnd(constraintItem) >= getMinStart(optimizedItem)) || (constraintItem.rawStartTime+constraintItem.rawDuration+timelineTolerance >= optimizedItem.rawStartTime+optimizedItem.rawDuration && getMinStart(constraintItem) <= getMaxEnd(constraintItem)))
+    const constraintItems = optimizedItems.filter(findCloseItems(timelineConfig, optimizedItem))
 
-    for (var k = 0; k < optimizedItems.length; k++) {
+    for (var k = 0; k < constraintItems.length; k++) {
       //don't need to add a constraint if is self or the reverse constraint has already been added
       if (k === j || constraintMap[`${k}:${j}`]) continue
       constraintMap[`${j}:${k}`] = true
 
-      const constraintItem = optimizedItems[k]
+      const constraintItem = constraintItems[k]
 
       //prevent conflicts with earlier component endings
-      if (constraintItem.rawStartTime <= optimizedItem.rawStartTime && getMaxEnd(constraintItem) >= getMinStart(optimizedItem)){
+      if (isPotentialConflictBefore(timelineConfig, constraintItem, optimizedItem)){
         constraintCount++
         solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, constraintItem.endTime.plus(1), optimizedItem.cassowaryPriority));
       }
 
       //prevent conflicts with later component starts
-      if (constraintItem.rawStartTime+constraintItem.rawDuration+timelineTolerance >= optimizedItem.rawStartTime+optimizedItem.rawDuration && getMinStart(constraintItem) <= getMaxEnd(constraintItem)){
+      if (isPotentialConflictAfter(timelineConfig, constraintItem, optimizedItem)){
         constraintCount++
         solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.plus(1), kiwi.Operator.Le, constraintItem.startTime, optimizedItem.cassowaryPriority));
       }
