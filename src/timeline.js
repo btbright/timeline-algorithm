@@ -93,7 +93,7 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
     const item = itemsByPriority[i]
 
     const optimizedItem = {
-      id: i,
+      id: i+1,
       rawStartTime: item.startTime, //used to calculate potential conflicts
       rawDuration: item.duration, //same
       startTime: new Var(),
@@ -105,14 +105,15 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
 
     //set duration
     solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.minus(optimizedItem.startTime), kiwi.Operator.Ge, item.duration-durationTolerance, kiwi.Strength.required));
-    
+
     //set tolerance
     solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Le, item.startTime+timelineTolerance, kiwi.Strength.required));
     solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, item.startTime-timelineTolerance, kiwi.Strength.required));
 
     //suggest values
-    solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Eq, item.startTime, optimizedItem.cassowaryPriority));
-    solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime, kiwi.Operator.Eq, item.startTime+item.duration, optimizedItem.cassowaryPriority));
+    solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Eq, item.startTime, kiwi.Strength.strong));
+    solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime, kiwi.Operator.Eq, item.startTime+item.duration, kiwi.Strength.strong));
+    solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.minus(optimizedItem.startTime), kiwi.Operator.Eq, item.duration, kiwi.Strength.strong));
 
     //setup outer limits
     solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, 0));
@@ -159,14 +160,14 @@ export function makeOptimizedTimelineItems({timelineDuration, timelineTolerance,
       if (isPotentialConflictBefore(timelineConfig, constraintItem, optimizedItem)){
         hasAddedConstraint = true
         constraintCount++
-        solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, constraintItem.endTime.plus(1), kiwi.Strength.strong + optimizedItem.cassowaryPriority));
+        solver.addConstraint(new kiwi.Constraint(optimizedItem.startTime, kiwi.Operator.Ge, constraintItem.endTime.plus(1), kiwi.Strength.strong));
       }
 
       //prevent conflicts with later component starts
       if (isPotentialConflictAfter(timelineConfig, constraintItem, optimizedItem)){
         hasAddedConstraint = true
         constraintCount++
-        solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.plus(1), kiwi.Operator.Le, constraintItem.startTime, kiwi.Strength.strong + optimizedItem.cassowaryPriority));
+        solver.addConstraint(new kiwi.Constraint(optimizedItem.endTime.plus(1), kiwi.Operator.Le, constraintItem.startTime, kiwi.Strength.strong));
       }
 
       if (hasAddedConstraint){

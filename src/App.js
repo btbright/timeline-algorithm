@@ -5,11 +5,11 @@ import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved 
 const timelineDuration = 1000 * 60 * 2.5
 const componentDurationMultiplier = 300
 const componentCount = 100
-const benchmarkLoadFactor = 20
+const benchmarkLoadFactor = 100
 
 const timelineConfig = {
   timelineDuration,
-  timelineTolerance : 2000,
+  timelineTolerance : 1500,
   durationTolerance : 500
 }
 
@@ -127,7 +127,7 @@ class App extends Component {
                                 background: !this.state.hoveredId ? naturalColor : ((this.state.optimizedConstraintDebugMap[`constraints-${this.state.hoveredId}`]||[]).indexOf(item.id) !== -1 || this.state.hoveredId === item.id ? naturalColor : '#eee'),
                                 left: `${(getValue(item.startTime) / timelineDuration)*100}%`,
                                 width: `${((getValue(item.endTime)-getValue(item.startTime)) / timelineDuration)*100}%`
-                              }}></div>
+                              }}>{this.state.hoveredId === item.id && item.id}</div>
                     })}
                    </div>
           })}
