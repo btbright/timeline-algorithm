@@ -2,9 +2,9 @@ import React, { Component } from 'react';
 import './App.css';
 import { makeTimelineRows, makeOptimizedTimelineItems, makeTimelineRowsImproved } from './timeline'
 
-const timelineDuration = 1000 * 60 * 2.5
+const timelineDuration = 10000
 const componentDurationMultiplier = 300
-const componentCount = 100
+const componentCount = 10
 const benchmarkLoadFactor = 100
 
 const timelineConfig = {
